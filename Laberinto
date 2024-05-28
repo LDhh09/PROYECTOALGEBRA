@@ -1,0 +1,160 @@
+import random
+import os
+import numpy as np
+import sympy as sp
+
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def print_maze(maze, player_pos):
+    for row_idx, row in enumerate(maze):
+        for col_idx, cell in enumerate(row):
+            if (row_idx, col_idx) == player_pos:
+                print("P", end=" ")
+            else:
+                print(cell, end=" ")
+        print()
+
+def generate_maze(size, obstacles):
+    maze = [[" "] * size for _ in range(size)]
+
+    # Add walls around the maze
+    for i in range(size):
+        maze[i][0] = "|"
+        maze[i][size - 1] = "|"
+        maze[0][i] = "-"
+        maze[size - 1][i] = "-"
+
+    maze[1][0] = " "  # Entry
+    maze[size - 2][size - 1] = "E"  # Exit
+
+    for _ in range(obstacles):
+        while True:
+            row = random.randint(1, size - 2)
+            col = random.randint(1, size - 2)
+            if maze[row][col] == " ":
+                maze[row][col] = "|"
+                break
+
+    additional_walls = size  # A moderate number of walls to create a maze-like structure
+    for _ in range(additional_walls):
+        row = random.randint(1, size - 2)
+        col = random.randint(1, size - 2)
+        if maze[row][col] == " ":
+            maze[row][col] = "|"
+
+    return maze
+
+def generate_math_goals(maze, num_goals):
+    size = len(maze)
+    goals = []
+    operations = ["matrix", "diff_eq", "linear_eq"]  # New operations
+    for _ in range(num_goals):
+        while True:
+            row = random.randint(1, size - 2)
+            col = random.randint(1, size - 2)
+            if maze[row][col] == " ":
+                operation = random.choice(operations)
+                if operation == "matrix":
+                    matrix = np.random.randint(1, 10, (2, 2))
+                    maze[row][col] = "M"
+                    goals.append((row, col, operation, matrix))
+                    break
+                elif operation == "diff_eq":
+                    x = sp.symbols('x')
+                    y = sp.Function('y')
+                    eq = sp.Eq(y(x).diff(x, x) + y(x), 0)  # Simple differential equation y'' + y = 0
+                    maze[row][col] = "D"
+                    goals.append((row, col, operation, eq))
+                    break
+                elif operation == "linear_eq":
+                    a, b = sp.symbols('a b')
+                    eq = sp.Eq(2*a + 3*b, 6)  # Simple linear equation 2a + 3b = 6
+                    maze[row][col] = "L"
+                    goals.append((row, col, operation, eq))
+                    break
+    return goals
+
+def move_player(key, player_pos, maze):
+    row, col = player_pos
+    new_row, new_col = row, col
+    if key == "w" and row > 0 and maze[row-1][col] not in "|-":
+        new_row -= 1
+    elif key == "s" and row < len(maze) - 1 and maze[row+1][col] not in "|-":
+        new_row += 1
+    elif key == "a" and col > 0 and maze[row][col-1] not in "|-":
+        new_col -= 1
+    elif key == "d" and col < len(maze[0]) - 1 and maze[row][col+1] not in "|-":
+        new_col += 1
+    return (new_row, new_col)
+
+def solve_math_goal(equation):
+    if equation[2] == "matrix":
+        matrix = equation[3]
+        det = int(np.linalg.det(matrix))
+        print("Matriz:")
+        print(matrix)
+        while True:
+            try:
+                answer = int(input(f"Resuelve el determinante de la matriz anterior: "))
+                break
+            except ValueError:
+                print("Por favor, introduce un número válido.")
+        return answer == det
+    elif equation[2] == "diff_eq":
+        eq = equation[3]
+        x = sp.symbols('x')
+        y = sp.Function('y')
+        solution = sp.dsolve(eq, y(x))
+        print(f"Ecuación diferencial: {eq}")
+        print(f"Solución general: {solution}")
+        input("Presiona cualquier tecla para continuar...")
+        return True  # Asumiendo que el jugador solo necesita ver la solución
+    elif equation[2] == "linear_eq":
+        eq = equation[3]
+        a, b = sp.symbols('a b')
+        solution = sp.solve(eq, (a, b))
+        print(f"Ecuación lineal: {eq}")
+        print(f"Solución: {solution}")
+        input("Presiona cualquier tecla para continuar...")
+        return True  # Asumiendo que el jugador solo necesita ver la solución
+
+def main():
+    size = 10  # Size of the maze
+    obstacles = 6  # Number of obstacles
+    num_goals = 5  # Number of math goals
+
+    maze = generate_maze(size, obstacles)
+    goals = generate_math_goals(maze, num_goals)
+
+    player_pos = (1, 0)  # Starting position
+    while True:
+        clear_screen()
+        print_maze(maze, player_pos)
+        print("Usa las teclas 'w' (arriba), 's' (abajo), 'a' (izquierda), 'd' (derecha) para moverte. Presiona 'q' para salir.")
+        key = input("Ingresa una tecla: ").lower()
+        if key == "q":
+            print("¡Adiós!")
+            break
+        new_pos = move_player(key.lower(), player_pos, maze)
+        if new_pos != player_pos:
+            player_pos = new_pos
+            for goal in goals:
+                row, col, operation, value = goal
+                if player_pos == (row, col):
+                    if solve_math_goal(goal):
+                        maze[row][col] = " "
+                        goals.remove(goal)
+                        break
+                    else:
+                        print("¡Incorrecto! Intenta de nuevo.")
+                        input("Presiona cualquier tecla para continuar...")
+                        break
+        if player_pos == (size - 2, size - 1):
+            clear_screen()
+            print_maze(maze, player_pos)
+            print("¡Felicidades! ¡Has llegado a la salida!")
+            break
+
+if _name_ == "_main_":
+    main()
