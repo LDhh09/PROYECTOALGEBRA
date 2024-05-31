@@ -1,7 +1,7 @@
-import random
+
+     import random
 import os
 import numpy as np
-import sympy as sp
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -48,31 +48,25 @@ def generate_maze(size, obstacles):
 def generate_math_goals(maze, num_goals):
     size = len(maze)
     goals = []
-    operations = ["matrix", "diff_eq", "linear_eq"]  # New operations
+    operations = ["matrix_add", "matrix_sub", "matrix_mul", "matrix_div"]
     for _ in range(num_goals):
         while True:
             row = random.randint(1, size - 2)
             col = random.randint(1, size - 2)
             if maze[row][col] == " ":
                 operation = random.choice(operations)
-                if operation == "matrix":
-                    matrix = np.random.randint(1, 10, (2, 2))
+                matrix1 = np.random.randint(1, 10, (2, 2))
+                matrix2 = np.random.randint(1, 10, (2, 2))
+                if operation == "matrix_add":
+                    maze[row][col] = "A"
+                elif operation == "matrix_sub":
+                    maze[row][col] = "S"
+                elif operation == "matrix_mul":
                     maze[row][col] = "M"
-                    goals.append((row, col, operation, matrix))
-                    break
-                elif operation == "diff_eq":
-                    x = sp.symbols('x')
-                    y = sp.Function('y')
-                    eq = sp.Eq(y(x).diff(x, x) + y(x), 0)  # Simple differential equation y'' + y = 0
+                elif operation == "matrix_div":
                     maze[row][col] = "D"
-                    goals.append((row, col, operation, eq))
-                    break
-                elif operation == "linear_eq":
-                    a, b = sp.symbols('a b')
-                    eq = sp.Eq(2*a + 3*b, 6)  # Simple linear equation 2a + 3b = 6
-                    maze[row][col] = "L"
-                    goals.append((row, col, operation, eq))
-                    break
+                goals.append((row, col, operation, matrix1, matrix2))
+                break
     return goals
 
 def move_player(key, player_pos, maze):
@@ -89,35 +83,64 @@ def move_player(key, player_pos, maze):
     return (new_row, new_col)
 
 def solve_math_goal(equation):
-    if equation[2] == "matrix":
-        matrix = equation[3]
-        det = int(np.linalg.det(matrix))
-        print("Matriz:")
-        print(matrix)
+    matrix1 = equation[3]
+    matrix2 = equation[4]
+    if equation[2] == "matrix_add":
+        result = matrix1 + matrix2
+        print("Matrices:")
+        print(matrix1)
+        print("+")
+        print(matrix2)
         while True:
             try:
-                answer = int(input(f"Resuelve el determinante de la matriz anterior: "))
+                answer = np.array(eval(input("Introduce la matriz resultante (en formato de lista de listas): ")))
                 break
-            except ValueError:
-                print("Por favor, introduce un número válido.")
-        return answer == det
-    elif equation[2] == "diff_eq":
-        eq = equation[3]
-        x = sp.symbols('x')
-        y = sp.Function('y')
-        solution = sp.dsolve(eq, y(x))
-        print(f"Ecuación diferencial: {eq}")
-        print(f"Solución general: {solution}")
-        input("Presiona cualquier tecla para continuar...")
-        return True  # Asumiendo que el jugador solo necesita ver la solución
-    elif equation[2] == "linear_eq":
-        eq = equation[3]
-        a, b = sp.symbols('a b')
-        solution = sp.solve(eq, (a, b))
-        print(f"Ecuación lineal: {eq}")
-        print(f"Solución: {solution}")
-        input("Presiona cualquier tecla para continuar...")
-        return True  # Asumiendo que el jugador solo necesita ver la solución
+            except:
+                print("Por favor, introduce una matriz válida.")
+        return np.array_equal(answer, result)
+    elif equation[2] == "matrix_sub":
+        result = matrix1 - matrix2
+        print("Matrices:")
+        print(matrix1)
+        print("-")
+        print(matrix2)
+        while True:
+            try:
+                answer = np.array(eval(input("Introduce la matriz resultante (en formato de lista de listas): ")))
+                break
+            except:
+                print("Por favor, introduce una matriz válida.")
+        return np.array_equal(answer, result)
+    elif equation[2] == "matrix_mul":
+        result = np.dot(matrix1, matrix2)
+        print("Matrices:")
+        print(matrix1)
+        print("*")
+        print(matrix2)
+        while True:
+            try:
+                answer = np.array(eval(input("Introduce la matriz resultante (en formato de lista de listas): ")))
+                break
+            except:
+                print("Por favor, introduce una matriz válida.")
+        return np.array_equal(answer, result)
+    elif equation[2] == "matrix_div":
+        try:
+            result = np.dot(matrix1, np.linalg.inv(matrix2))
+        except np.linalg.LinAlgError:
+            print("La segunda matriz no es invertible. Intenta nuevamente.")
+            return False
+        print("Matrices:")
+        print(matrix1)
+        print("/")
+        print(matrix2)
+        while True:
+            try:
+                answer = np.array(eval(input("Introduce la matriz resultante (en formato de lista de listas): ")))
+                break
+            except:
+                print("Por favor, introduce una matriz válida.")
+        return np.array_equal(answer, result)
 
 def main():
     size = 10  # Size of the maze
@@ -140,7 +163,7 @@ def main():
         if new_pos != player_pos:
             player_pos = new_pos
             for goal in goals:
-                row, col, operation, value = goal
+                row, col, operation, matrix1, matrix2 = goal
                 if player_pos == (row, col):
                     if solve_math_goal(goal):
                         maze[row][col] = " "
